@@ -1,0 +1,36 @@
+# ===== Compiled Output =====
+target/
+*.class
+
+# ===== IDE Files =====
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.eclipse
+.project
+.classpath
+.settings/
+
+# ===== Maven =====
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+!.mvn/wrapper/maven-wrapper.properties
+
+# ===== Database Credentials =====
+# Never commit this file — it contains your MySQL password
+src/main/resources/db.properties
+
+# ===== OS Files =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Logs =====
+*.log
+logs/
+
+# ===== Packaging =====
+*.jar
+!lib/*.jar

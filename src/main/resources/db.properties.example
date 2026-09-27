@@ -1,0 +1,11 @@
+# ============================================================
+# Hostel Room Allocation System - Database Configuration Template
+# ============================================================
+# Rename this file to db.properties or copy it to config/db.properties
+# and update the credentials to match your local MySQL Server.
+# ============================================================
+
+db.url=jdbc:mysql://localhost:3306/hostel_management?useSSL=false&serverTimezone=Asia/Kolkata&allowPublicKeyRetrieval=true
+db.username=root
+db.password=YOUR_MYSQL_ROOT_PASSWORD
+db.driver=com.mysql.cj.jdbc.Driver
