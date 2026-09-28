@@ -58,6 +58,7 @@ public class DashboardFrame extends JFrame {
     private final JPanel         contentArea    = new JPanel(cardLayout);
     private       JButton        activeNavBtn   = null;
     private       DashboardPanel dashboardPanel;
+    private       VacatePanel    vacatePanel;
     private       ReportsPanel   reportsPanel;
 
     // ── Panel key constants (used to switch cards) ─────────────────────────
@@ -253,6 +254,9 @@ public class DashboardFrame extends JFrame {
         // Room Allocation Panel
         contentArea.add(new AllocationPanel(), PANEL_ALLOCATION);
         // Room Vacating Panel
+        vacatePanel = new VacatePanel();
+        contentArea.add(vacatePanel, PANEL_VACATE);
+        // Reports & Analytics Panel
         reportsPanel = new ReportsPanel();
         contentArea.add(reportsPanel, PANEL_REPORTS);
 
@@ -298,6 +302,8 @@ public class DashboardFrame extends JFrame {
         cardLayout.show(contentArea, panelName);
         if (PANEL_DASHBOARD.equals(panelName) && dashboardPanel != null) {
             dashboardPanel.refreshData();
+        } else if (PANEL_VACATE.equals(panelName) && vacatePanel != null) {
+            vacatePanel.refreshData();
         } else if (PANEL_REPORTS.equals(panelName) && reportsPanel != null) {
             reportsPanel.refreshData();
         }

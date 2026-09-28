@@ -415,6 +415,19 @@ public class VacatePanel extends JPanel {
         updateSelectedDetailsDisplay();
     }
 
+    public void refreshData() {
+        if (txtSearch != null) {
+            txtSearch.setText("");
+        }
+        if (cmbBlockFilter != null) {
+            cmbBlockFilter.setSelectedIndex(0);
+        }
+        if (cmbStatusFilter != null) {
+            cmbStatusFilter.setSelectedIndex(0);
+        }
+        loadActiveAllocations("");
+    }
+
     private void updateSelectedDetailsDisplay() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         if (selectedAllocation != null) {
@@ -422,13 +435,21 @@ public class VacatePanel extends JPanel {
             lblSelRoom.setText("<html><font size='2' color='#64748b'>Target Room:</font><br><b>Room " + selectedAllocation.getRoomNumber() + " (Block " + selectedAllocation.getBlockName() + ", Floor " + selectedAllocation.getFloorNumber() + ")</b></html>");
             lblSelOccupants.setText("<html><font size='2' color='#64748b'>Room Occupancy:</font><br><b>" + selectedAllocation.getOccupied() + " / " + selectedAllocation.getCapacity() + " Beds Occupied</b></html>");
             lblSelAllocDate.setText("<html><font size='2' color='#64748b'>Allocated Date:</font><br><b>" + (selectedAllocation.getAllocDate() != null ? sdf.format(selectedAllocation.getAllocDate()) : "-") + "</b></html>");
-            btnVacateRoom.setEnabled(true);
+
+            boolean isActive = "ACTIVE".equalsIgnoreCase(selectedAllocation.getStatus());
+            btnVacateRoom.setEnabled(isActive);
+            if (!isActive) {
+                btnVacateRoom.setText("ALREADY VACATED");
+            } else {
+                btnVacateRoom.setText("🚪 VACATE ROOM");
+            }
         } else {
             lblSelStudent.setText("<html><font size='2' color='#64748b'>Student:</font><br><b>Select a row from table</b></html>");
             lblSelRoom.setText("<html><font size='2' color='#64748b'>Target Room:</font><br><b>-</b></html>");
             lblSelOccupants.setText("<html><font size='2' color='#64748b'>Room Occupancy:</font><br><b>-</b></html>");
             lblSelAllocDate.setText("<html><font size='2' color='#64748b'>Allocated Date:</font><br><b>-</b></html>");
             btnVacateRoom.setEnabled(false);
+            btnVacateRoom.setText("🚪 VACATE ROOM");
         }
     }
 

@@ -269,9 +269,21 @@ public class StudentPanel extends JPanel {
         cmbFilterYear = new JComboBox<>(new String[]{"All Years", "Year 1", "Year 2", "Year 3", "Year 4", "Year 5"});
         cmbFilterYear.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        btnClearFilters = makeCustomButton("🔄 Reset", BTN_SECONDARY, 80);
-        btnClearFilters.setPreferredSize(new Dimension(80, 28));
+        btnClearFilters = makeCustomButton("🔄 Reset", BTN_SECONDARY, 75);
+        btnClearFilters.setPreferredSize(new Dimension(75, 28));
         btnClearFilters.addActionListener(e -> resetSearchFilters());
+
+        JButton btnSelectAll = makeCustomButton("☑️ Select All", ACCENT_BLUE, 95);
+        btnSelectAll.setPreferredSize(new Dimension(95, 28));
+        btnSelectAll.addActionListener(e -> {
+            if (table.getRowCount() > 0) {
+                table.selectAll();
+            }
+        });
+
+        JButton btnDeselectAll = makeCustomButton("❌ Clear", BTN_SECONDARY, 70);
+        btnDeselectAll.setPreferredSize(new Dimension(70, 28));
+        btnDeselectAll.addActionListener(e -> table.clearSelection());
 
         DocumentListener docListener = new DocumentListener() {
             public void insertUpdate(DocumentEvent e)  { loadStudentsFiltered(); }
@@ -293,6 +305,8 @@ public class StudentPanel extends JPanel {
         filterBar.add(lblYear);
         filterBar.add(cmbFilterYear);
         filterBar.add(btnClearFilters);
+        filterBar.add(btnSelectAll);
+        filterBar.add(btnDeselectAll);
 
         card.add(filterBar, BorderLayout.NORTH);
 
@@ -308,7 +322,7 @@ public class StudentPanel extends JPanel {
         table = new JTable(tableModel);
         table.setRowHeight(32);
         table.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         table.setGridColor(new Color(0xf1f5f9));
         table.setSelectionBackground(new Color(0xdbeafe));
         table.setSelectionForeground(new Color(0x1e3a8a));
@@ -344,7 +358,7 @@ public class StudentPanel extends JPanel {
         lblCount.setFont(new Font("Segoe UI", Font.BOLD, 12));
         lblCount.setForeground(TEXT_MUTED);
 
-        JLabel hint = new JLabel("💡 Tip: Click any row to select & edit student details");
+        JLabel hint = new JLabel("💡 Tip: Use Ctrl/Shift click or 'Select All' to select & delete multiple students");
         hint.setFont(new Font("Segoe UI", Font.ITALIC, 11));
         hint.setForeground(TEXT_MUTED);
 
@@ -352,10 +366,10 @@ public class StudentPanel extends JPanel {
         footer.add(hint, BorderLayout.EAST);
         card.add(footer, BorderLayout.SOUTH);
 
-        // Row Selection Listener
+        // Multi-row Selection Listener
         table.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting() && table.getSelectedRow() != -1) {
-                populateFormFromTable(table.getSelectedRow());
+            if (!e.getValueIsAdjusting()) {
+                updateFormAndButtonsForSelection();
             }
         });
 
@@ -446,30 +460,130 @@ public class StudentPanel extends JPanel {
         }
     }
 
+    private void updateFormAndButtonsForSelection() {
+        int[] selectedRows = table.getSelectedRows();
+        int count = selectedRows.length;
+
+        if (count == 1) {
+            int row = selectedRows[0];
+            selectedInternalId = (int) tableModel.getValueAt(row, 0);
+            txtStudentId.setText(tableModel.getValueAt(row, 1).toString());
+            txtName.setText(tableModel.getValueAt(row, 2).toString());
+            txtCourse.setText(tableModel.getValueAt(row, 3).toString());
+            cbYear.setSelectedItem(tableModel.getValueAt(row, 4).toString());
+            cbGender.setSelectedItem(tableModel.getValueAt(row, 5).toString());
+            txtPhone.setText(tableModel.getValueAt(row, 6).toString());
+            txtEmail.setText(tableModel.getValueAt(row, 7).toString());
+            txtAddress.setText(tableModel.getValueAt(row, 8).toString());
+
+            lblFormMode.setText("✏️ Edit Student (ID: " + txtStudentId.getText() + ")");
+            lblFormMode.setForeground(BTN_AMBER);
+            btnAdd.setEnabled(false);
+            btnUpdate.setEnabled(true);
+            btnDelete.setEnabled(true);
+            btnDelete.setText("🗑️ Delete");
+        } else if (count > 1) {
+            selectedInternalId = -1;
+            lblFormMode.setText("👥 " + count + " Students Selected");
+            lblFormMode.setForeground(ACCENT_BLUE);
+            btnAdd.setEnabled(false);
+            btnUpdate.setEnabled(false);
+            btnDelete.setEnabled(true);
+            btnDelete.setText("🗑️ Delete (" + count + ")");
+        } else {
+            selectedInternalId = -1;
+            txtStudentId.setText("");
+            txtName.setText("");
+            txtCourse.setText("");
+            cbYear.setSelectedIndex(0);
+            cbGender.setSelectedIndex(0);
+            txtPhone.setText("");
+            txtEmail.setText("");
+            txtAddress.setText("");
+
+            lblFormMode.setText("➕ Add New Student");
+            lblFormMode.setForeground(ACCENT_BLUE);
+            btnAdd.setEnabled(true);
+            btnUpdate.setEnabled(false);
+            btnDelete.setEnabled(false);
+            btnDelete.setText("🗑️ Delete");
+        }
+    }
+
     private void performDelete() {
-        if (selectedInternalId <= 0) {
-            showWarning("Please select a student from the table to delete.");
+        int[] selectedRows = table.getSelectedRows();
+        if (selectedRows.length == 0) {
+            showWarning("Please select at least one student from the table to delete.");
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(
-            this,
-            "Are you sure you want to delete student ID '" + txtStudentId.getText() + "' (" + txtName.getText() + ")?",
-            "Confirm Delete",
-            JOptionPane.YES_NO_OPTION,
-            JOptionPane.WARNING_MESSAGE
-        );
+        if (selectedRows.length == 1) {
+            int row = selectedRows[0];
+            int id = (int) tableModel.getValueAt(row, 0);
+            String roll = tableModel.getValueAt(row, 1).toString();
+            String name = tableModel.getValueAt(row, 2).toString();
 
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                studentService.deleteStudent(selectedInternalId);
-                showSuccess("Student deleted successfully!");
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete student '" + roll + "' (" + name + ")?",
+                "Confirm Delete",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    studentService.deleteStudent(id);
+                    showSuccess("Student deleted successfully!");
+                    clearForm();
+                    loadStudents(null);
+                } catch (IllegalArgumentException ex) {
+                    showWarning(ex.getMessage());
+                } catch (Exception ex) {
+                    showError("Database Error: " + ex.getMessage());
+                }
+            }
+        } else {
+            int count = selectedRows.length;
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to delete all " + count + " selected students?",
+                "Confirm Multiple Delete",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                int successCount = 0;
+                List<String> failedStudents = new java.util.ArrayList<>();
+
+                for (int row : selectedRows) {
+                    int id = (int) tableModel.getValueAt(row, 0);
+                    String roll = tableModel.getValueAt(row, 1).toString();
+                    String name = tableModel.getValueAt(row, 2).toString();
+
+                    try {
+                        studentService.deleteStudent(id);
+                        successCount++;
+                    } catch (Exception ex) {
+                        failedStudents.add(roll + " (" + name + "): " + ex.getMessage().replace("\n", " "));
+                    }
+                }
+
                 clearForm();
                 loadStudents(null);
-            } catch (IllegalArgumentException ex) {
-                showWarning(ex.getMessage());
-            } catch (Exception ex) {
-                showError("Database Error: " + ex.getMessage());
+
+                if (failedStudents.isEmpty()) {
+                    showSuccess("Successfully deleted all " + successCount + " selected students!");
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Deleted ").append(successCount).append(" of ").append(count).append(" selected students.\n\n");
+                    sb.append("The following student(s) could not be deleted:\n");
+                    for (String fail : failedStudents) {
+                        sb.append("• ").append(fail).append("\n");
+                    }
+                    JOptionPane.showMessageDialog(this, sb.toString(), "Multiple Delete Summary", JOptionPane.WARNING_MESSAGE);
+                }
             }
         }
     }
@@ -479,21 +593,7 @@ public class StudentPanel extends JPanel {
     }
 
     private void populateFormFromTable(int row) {
-        selectedInternalId = (int) tableModel.getValueAt(row, 0);
-        txtStudentId.setText(tableModel.getValueAt(row, 1).toString());
-        txtName.setText(tableModel.getValueAt(row, 2).toString());
-        txtCourse.setText(tableModel.getValueAt(row, 3).toString());
-        cbYear.setSelectedItem(tableModel.getValueAt(row, 4).toString());
-        cbGender.setSelectedItem(tableModel.getValueAt(row, 5).toString());
-        txtPhone.setText(tableModel.getValueAt(row, 6).toString());
-        txtEmail.setText(tableModel.getValueAt(row, 7).toString());
-        txtAddress.setText(tableModel.getValueAt(row, 8).toString());
-
-        lblFormMode.setText("✏️ Edit Student (ID: " + txtStudentId.getText() + ")");
-        lblFormMode.setForeground(BTN_AMBER);
-        btnAdd.setEnabled(false);
-        btnUpdate.setEnabled(true);
-        btnDelete.setEnabled(true);
+        updateFormAndButtonsForSelection();
     }
 
     private void clearForm() {
@@ -513,6 +613,7 @@ public class StudentPanel extends JPanel {
         btnAdd.setEnabled(true);
         btnUpdate.setEnabled(false);
         btnDelete.setEnabled(false);
+        btnDelete.setText("🗑️ Delete");
     }
 
     private Student getStudentFromForm() {

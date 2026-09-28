@@ -34,3 +34,4 @@ logs/
 # ===== Packaging =====
 *.jar
 !lib/*.jar
+*.zip

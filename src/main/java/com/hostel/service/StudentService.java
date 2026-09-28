@@ -1,9 +1,12 @@
 package com.hostel.service;
 
+import com.hostel.config.DBConnection;
 import com.hostel.dao.AllocationDAO;
 import com.hostel.dao.StudentDAO;
 import com.hostel.model.Student;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -110,7 +113,7 @@ public class StudentService {
             throw new IllegalArgumentException("Please select a student to delete.");
         }
 
-        // Check if student has an active allocation
+        // 1. Block deletion if student has an ACTIVE allocation
         boolean hasActiveAllocation = allocationDAO.hasActiveAllocation(id);
         if (hasActiveAllocation) {
             throw new IllegalArgumentException(
@@ -119,19 +122,40 @@ public class StudentService {
             );
         }
 
+        // 2. Safely delete student and their past (VACATED) allocation history in a transaction
+        Connection conn = null;
         try {
-            boolean deleted = studentDAO.deleteStudent(id);
-            if (!deleted) {
-                throw new IllegalArgumentException("Student record not found or already deleted.");
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            // Delete associated vacated allocation records first
+            String deleteAllocSql = "DELETE FROM allocations WHERE student_id = ? AND status = 'VACATED'";
+            try (PreparedStatement psAlloc = conn.prepareStatement(deleteAllocSql)) {
+                psAlloc.setInt(1, id);
+                psAlloc.executeUpdate();
             }
+
+            // Delete student record
+            String deleteStudentSql = "DELETE FROM students WHERE id = ?";
+            try (PreparedStatement psStudent = conn.prepareStatement(deleteStudentSql)) {
+                psStudent.setInt(1, id);
+                int rows = psStudent.executeUpdate();
+                if (rows == 0) {
+                    conn.rollback();
+                    throw new IllegalArgumentException("Student record not found or already deleted.");
+                }
+            }
+
+            conn.commit();
         } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().contains("foreign key constraint")) {
-                throw new IllegalArgumentException(
-                    "Cannot delete student with past allocation history.\n" +
-                    "To maintain audit records, students with allocation history cannot be deleted."
-                );
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ignored) {}
             }
             throw e;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); } catch (SQLException ignored) {}
+            }
         }
     }
 
